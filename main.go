@@ -11,58 +11,19 @@ import (
 )
 
 func main() {
-	setLogger()
+	l, err := lexis.New(strings.NewReader("123.3 \"\""))
+	if err != nil {
+		slog.Error(err.Error())
+		return
+	}
 
-	l := lexis.New(strings.NewReader("0"))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("1"))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("02"))
-	fmt.Println(l.Scan())
-
-	// l = lexis.New(strings.NewReader("0."))
-	// fmt.Println(l.Scan())
-
-	// l = lexis.New(strings.NewReader("1."))
-	// fmt.Println(l.Scan())
-
-	// l = lexis.New(strings.NewReader("02."))
-	// fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("102"))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("102.2"))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("102.22"))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("102.220"))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("102.220 3"))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("102.220 33"))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("102.220 333"))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("102.220 333 3.3"))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("102.220 333 3.3 "))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader(" 102.220   333  3.3  "))
-	fmt.Println(l.Scan())
-
-	l = lexis.New(strings.NewReader("  102.220   333  3.3"))
-	fmt.Println(l.Scan())
+	lexemes, err := l.Scan()
+	for i, l := range lexemes {
+		fmt.Printf("%d\tlexeme: %s\n", i, l)
+	}
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 }
 
 func setLogger() {

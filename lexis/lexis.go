@@ -1,89 +1,106 @@
 package lexis
 
 import (
-	"bufio"
+	"errors"
+	"fmt"
 	"io"
 	"strings"
+
+	"json-parser/common/ascii"
+	"json-parser/common/cnsmr"
+	"json-parser/common/runes"
 )
 
 type Lexer struct {
-	r bufio.Reader
+	c *cnsmr.RuneConsumer
+	b interface {
+		String() string
+		Reset()
+	}
 }
 
-func New(r io.Reader) *Lexer {
-	return &Lexer{*bufio.NewReader(r)}
+func New(r io.RuneReader) (*Lexer, error) {
+	b := &strings.Builder{}
+	c, err := cnsmr.NewRuneConsumer(r, b)
+	if err != nil {
+		return nil, err
+	}
+	return &Lexer{c, b}, nil
 }
 
-func (l *Lexer) Scan() ([]string, error) {
-	res := make([]string, 0, 50)
-	b := strings.Builder{}
-	for {
-		char, _, err := l.r.ReadRune()
-		if err == io.EOF {
-			return res, err
-		} else if err != nil {
-			panic("!!!")
-			return res, err
-		}
+func (l *Lexer) Scan() (res []string, err error) {
+	res = make([]string, 0, 50)
+
+	defer l.recover(false, &err)
+	for char := l.c.Char(); err == nil; char = l.c.Char() {
 		switch {
-		case char >= '0' && char <= '9':
-			for char >= '0' && char <= '9' {
-				_, err = b.WriteRune(char)
-				if err != nil {
-					panic("!!!")
-					return res, err
-				}
-				char, _, err = l.r.ReadRune()
-				if err == io.EOF {
-					res = append(res, b.String())
-					b.Reset()
-					return res, err
-				} else if err != nil {
-					panic("!!!")
-				}
-			}
-			if char != '.' {
-				break
-			}
-			_, err = b.WriteRune(char)
-			if err != nil {
-				panic("!!!")
-				return res, err
-			}
-			char, _, err = l.r.ReadRune()
-			if err != nil {
-				panic("!!!")
-				return res, err
-			}
-			isAtLeastOnce := false
-			for char >= '0' && char <= '9' {
-				_, err = b.WriteRune(char)
-				if err != nil {
-					panic("!!!")
-					return res, err
-				}
-				isAtLeastOnce = true
-				char, _, err = l.r.ReadRune()
-				if err == io.EOF {
-					res = append(res, b.String())
-					b.Reset()
-					return res, err
-				} else if err != nil {
-					panic("!!!")
-				}
-			}
-			if !isAtLeastOnce {
-				panic("!!!")
-			}
+		case ascii.IsDigit(char):
+			err = l.handleNumber()
+		case char == '"':
+			err = l.handleString()
 		case char == ' ':
-			continue
+			err = l.c.AtMin(1, runes.Is(' '))
 		default:
-			panic("!!!")
+			panic(fmt.Sprintf("unexpected char '%c'", char))
 		}
-		res = append(res, b.String())
-		b.Reset()
+		res = append(res, l.b.String())
+		l.b.Reset()
+	}
+
+	if err != io.EOF {
+		panic("must not panic here. " + err.Error())
+	}
+	return res, nil
+}
+
+func (l *Lexer) handleNumber() error {
+	err := l.c.AtMin(1, ascii.IsDigit)
+	if err != nil {
+		panic(err)
+	}
+	err = l.c.Exact(1, runes.Is('.'))
+	if err != nil {
+		panic(err)
+	}
+	err = l.c.AtMin(1, ascii.IsDigit)
+	if err != nil {
 		if err == io.EOF {
-			return res, nil
+			return io.EOF
 		}
+		panic(err)
+	}
+	return nil
+}
+
+func (l *Lexer) handleString() (err error) {
+	err = l.c.Exact(1, runes.Is('"'))
+	if err != nil {
+		if errors.Is(err, cnsmr.ErrCondition) {
+			l.c.Reset()
+		} else {
+			panic(err)
+		}
+	}
+	err = l.c.AtMin(1, runes.IsNot('"'))
+	if err != nil {
+		if errors.Is(err, cnsmr.ErrCondition) {
+			l.c.Reset()
+		} else {
+			panic(err)
+		}
+	}
+	err = l.c.Exact(1, runes.Is('"'))
+	if err != nil {
+		panic(err)
+	}
+	return nil
+}
+
+func (l *Lexer) recover(can bool, err *error) {
+	if !can {
+		return
+	}
+	if e := recover().(error); e != nil {
+		*err = e
 	}
 }
