@@ -1,7 +1,6 @@
 package cnsmr
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -49,28 +48,26 @@ func (e *ConsumerError) Unwrap() error {
 	return e.wrapped
 }
 
+type RuneWriter interface {
+	WriteRune(r rune) (size int, err error)
+}
+
 type RuneConsumer struct {
-	r    *bufio.Reader
-	w    *bufio.Writer
+	r    io.RuneReader
+	w    RuneWriter
 	char rune
 	err  error
 }
 
 func NewRuneConsumer(
-	in io.Reader,
-	out io.Writer,
+	inp io.RuneReader,
+	outp RuneWriter,
 ) (*RuneConsumer, error) {
-	r := bufio.NewReader(in)
-	char, _, err := r.ReadRune()
+	char, _, err := inp.ReadRune()
 	if err != nil {
 		return nil, err
 	}
-	return &RuneConsumer{
-		r,
-		bufio.NewWriter(out),
-		char,
-		nil,
-	}, nil
+	return &RuneConsumer{inp, outp, char, nil}, nil
 }
 
 // Success on io.EOF | nil
