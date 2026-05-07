@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	l, err := lexis.New(strings.NewReader("123.3 \"\""))
+	l, err := lexis.New(strings.NewReader("123.3\"fasd 23.32 f\""))
 	if err != nil {
 		slog.Error(err.Error())
 		return
@@ -19,7 +19,8 @@ func main() {
 
 	lexemes, err := l.Scan()
 	for i, l := range lexemes {
-		fmt.Printf("%d\tlexeme: %s\n", i, l)
+		fmt.Printf("%d\tLexeme: %s\n", i, l.Lexeme)
+		fmt.Printf("%d\tType:   %v\n\n", i, l.Type)
 	}
 	if err != nil {
 		fmt.Println(err.Error())

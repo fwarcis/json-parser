@@ -1,37 +1,48 @@
 package errs
 
-import "fmt"
+import (
+	"fmt"
+)
 
-var ErrInvalidNumber = NewValue(nil, "invalid number")
-
-func NewInvalidNumber(format string, args ...any) *ValueError {
-	return NewValue(ErrInvalidNumber, format, args...)
+type Number interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 |
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 |
+		~float32 | ~float64
 }
 
-var ErrNil = NewValue(nil, "nil value")
-
-func NewNil(format string, args ...any) *ValueError {
-	return NewValue(ErrNil, format, args...)
+func NewZeroValue[V any](
+	val V, prefix, name string,
+) *ValueError[V] {
+	return NewValue(
+		val,
+		prefix,
+		name+" == ZeroValue"+fmt.Sprintf("(%T)", val))
 }
 
-func NewValue(
-	wrapped error, format string, args ...any,
-) *ValueError {
-	return &ValueError{
-		wrapped: wrapped,
-		message: fmt.Sprintf(format, args...),
-	}
+func NewInvalidNumber[V Number](
+	val V, prefix, format string, args ...any,
+) *ValueError[V] {
+	return NewValue(
+		val,
+		prefix,
+		format+fmt.Sprintf(" (%v)", val),
+		args...)
 }
 
-type ValueError struct {
-	wrapped error
+type ValueError[V any] struct {
+	Value   V
 	message string
 }
 
-func (e *ValueError) Error() string {
-	return "value error: " + e.message
+func NewValue[V any](
+	val V, prefix, format string, args ...any,
+) *ValueError[V] {
+	return &ValueError[V]{
+		val,
+		"value error: " + prefix + ": " + fmt.Sprintf(format, args...),
+	}
 }
 
-func (e *ValueError) Unwrap() error {
-	return e.wrapped
+func (e *ValueError[V]) Error() string {
+	return e.message
 }
